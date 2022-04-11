@@ -1,24 +1,16 @@
-from http import HTTPStatus
-from flask import request, jsonify
 import re
-
 from datetime import datetime as dt
-
-from sqlalchemy.exc import NoResultFound
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm.session import Session
-from sqlalchemy.orm import Query
-
-from app.decorators.validate_fields import validate_fields
-
-from app.exc.leads_exc import EmailFormatError
-from app.exc.leads_exc import EmailTypeError
-from app.exc.leads_exc import PhoneFormatError
-from app.exc.leads_exc import OnlyEmailError
-
-from app.models.leads_model import Leads
+from http import HTTPStatus
 
 from app.configs.database import db
+from app.decorators.validate_fields import validate_fields
+from app.exc.leads_exc import EmailFormatError, EmailTypeError,OnlyEmailError, PhoneFormatError
+from app.models.leads_model import Leads
+
+from flask import jsonify, request
+from sqlalchemy.exc import IntegrityError, NoResultFound
+from sqlalchemy.orm import Query
+from sqlalchemy.orm.session import Session
 
 
 def check_phone(data: dict):
@@ -60,9 +52,13 @@ def create_lead():
         if "phone" in err.args[0]:
             return {"error": f"Phone `{lead.phone}` already exists"}, HTTPStatus.CONFLICT
     except PhoneFormatError as err:
-        return {"error": f"Phone format `{err}` not accepted, expected format `(xx)xxxxx-xxxx`"}, HTTPStatus.UNPROCESSABLE_ENTITY
+        return {
+            "error": f"Phone format `{err}` not accepted, expected format `(xx)xxxxx-xxxx`"
+        }, HTTPStatus.UNPROCESSABLE_ENTITY
     except EmailFormatError as err:
-        return {"error": f"email format `{err}` not accepted, expected format `xxxxx@xxxxxx.xxx`"}, HTTPStatus.UNPROCESSABLE_ENTITY
+        return {
+            "error": f"email format `{err}` not accepted, expected format `xxxxx@xxxxxx.xxx`"
+        }, HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 def read_leads():
@@ -71,9 +67,6 @@ def read_leads():
 
     leads = base_query.order_by(Leads.visits.desc()).all()
     
-    if not leads:
-        return "", HTTPStatus.NO_CONTENT
-
     return jsonify(leads), HTTPStatus.OK
 
 
@@ -84,14 +77,12 @@ def update_lead_by_email():
     base_query: Query = db.session.query(Leads)
 
     try:
-        if not check_email(data):
-            raise EmailFormatError(data["email"])
-
         for key, value in data.items():
             if key != "email":
                 raise OnlyEmailError(key)  
-            if type(key) != str:
-                raise EmailTypeError
+
+        if not check_email(data):
+            raise EmailFormatError(data["email"])
 
         lead = base_query.filter_by(email=data["email"]).one()
 
@@ -107,12 +98,14 @@ def update_lead_by_email():
 
     except OnlyEmailError as err:
         return {"error": f"Key `{err}` not supported,only `email` key expected"}, HTTPStatus.BAD_REQUEST
-    except EmailTypeError:
+    except TypeError:
         return {"error": f"The email key must be a `string`"}, HTTPStatus.UNPROCESSABLE_ENTITY
     except NoResultFound:
-        return {"error": "No data with requested email found"}, HTTPStatus.NO_CONTENT
+        return {"error": "No data with requested email found"}, HTTPStatus.NOT_FOUND
     except EmailFormatError as err:
-        return {"error": f"email format `{err}` not accepted, expected format `xxxxx@xxxxxx.xxx`"}, HTTPStatus.UNPROCESSABLE_ENTITY
+        return {
+            "error": f"email format `{err}` not accepted, expected format `xxxxx@xxxxxx.xxx`"
+        }, HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 def delete_lead_by_email():
@@ -122,7 +115,6 @@ def delete_lead_by_email():
     base_query: Query = db.session.query(Leads)
 
     try:
-      
         for key, value in data.items():
             if key != "email":
                 raise OnlyEmailError(key)
@@ -141,4 +133,4 @@ def delete_lead_by_email():
     except EmailTypeError:
         return {"error": "The email key must be a `string`"}, HTTPStatus.UNPROCESSABLE_ENTITY
     except NoResultFound:
-        return {"error": "No data with requested email found"}, HTTPStatus.NO_CONTENT
+        return {"error": "No data with requested email found"}, HTTPStatus.NOT_FOUND

@@ -1,8 +1,8 @@
 """create model leads
 
-Revision ID: cd39bca39440
+Revision ID: 1dc9a8b88dd5
 Revises: 
-Create Date: 2022-04-10 22:37:11.861032
+Create Date: 2022-04-11 18:08:33.608064
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'cd39bca39440'
+revision = '1dc9a8b88dd5'
 down_revision = None
 branch_labels = None
 depends_on = None
